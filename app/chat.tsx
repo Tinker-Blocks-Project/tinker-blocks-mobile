@@ -1,37 +1,73 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, ScrollView, Text, TextInput, View } from "react-native";
-import socket from "../utils/socket";
+import createSocket from "../utils/socket"; // This should be a function that returns a new WebSocket
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
+  const socketRef = useRef<WebSocket>(createSocket());
+
+  const setupSocket = (ws: WebSocket) => {
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setMessages((prev) => [...prev, `Pi: ${data.message}`]);
+    };
+
+    ws.onopen = () => {
+      console.log("🔌 WebSocket connected");
+    };
+
+    ws.onclose = () => {
+      console.log("❌ WebSocket closed");
+    };
+
+    ws.onerror = (err) => {
+      console.error("⚠️ WebSocket error", err);
+    };
+  };
 
   useEffect(() => {
-    socket.onmessage = (event) => {
-      setMessages((prev) => [...prev, `Pi: ${event.data}`]);
-    };
+    setupSocket(socketRef.current);
+
     return () => {
-      socket.onmessage = null;
+      socketRef.current?.close();
     };
   }, []);
 
-  const sendMessage = () => {
+  const ensureSocketOpen = async (): Promise<WebSocket> => {
+    const ws = socketRef.current;
+
+    if (ws.readyState === WebSocket.OPEN) return ws;
+
+    return new Promise((resolve) => {
+      const newSocket = createSocket();
+      socketRef.current = newSocket;
+      setupSocket(newSocket);
+
+      newSocket.onopen = () => {
+        console.log("🔁 Reconnected WebSocket");
+        resolve(newSocket);
+      };
+    });
+  };
+
+  const sendCommand = async (command: string, message: string) => {
+    const ws = await ensureSocketOpen();
+    ws.send(JSON.stringify({ command }));
+    setMessages((prev) => [...prev, `You: ${message}`]);
+  };
+
+  const sendMessage = async () => {
     if (input.trim()) {
-      socket.send(input);
+      const ws = await ensureSocketOpen();
+      ws.send(input);
       setMessages((prev) => [...prev, `You: ${input}`]);
       setInput("");
     }
   };
 
-  const handleRun = () => {
-    socket.send(JSON.stringify({ command: "run" }));
-    setMessages((prev) => [...prev, "You: Sent run command"]);
-  };
-
-  const handleStop = () => {
-    socket.send(JSON.stringify({ command: "stop" }));
-    setMessages((prev) => [...prev, "You: Sent stop command"]);
-  };
+  const handleRun = () => sendCommand("run", "Sent run command");
+  const handleStop = () => sendCommand("stop", "Sent stop command");
 
   return (
     <View style={{ flex: 1, padding: 16 }}>
