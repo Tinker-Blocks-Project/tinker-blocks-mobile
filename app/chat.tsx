@@ -1,5 +1,6 @@
 import React, {useEffect, useRef, useState} from "react";
 import {Button, ScrollView, Text, TextInput, View, StyleSheet, Pressable, Animated, StatusBar} from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import createSocket from "../utils/socket"; // This should be a function that returns a new WebSocket
 import Markdown from "react-native-markdown-display"; // ← Add this import
 
@@ -10,6 +11,7 @@ export default function ChatScreen() {
     const socketRef = useRef<WebSocket>(createSocket());
     const scrollViewRef = useRef<ScrollView>(null);
     const connectionPulse = useRef(new Animated.Value(1)).current;
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         const pulse = () => {
@@ -150,7 +152,7 @@ export default function ChatScreen() {
             <StatusBar barStyle="light-content" backgroundColor="#667eea" />
 
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerTitle}>Tinker Chat</Text>
                     <View style={styles.connectionStatus}>
@@ -191,7 +193,7 @@ export default function ChatScreen() {
             </ScrollView>
 
             {/* Input Area */}
-            <View style={styles.inputArea}>
+            <View style={[styles.inputArea, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                 <View style={styles.inputContainer}>
                     <TextInput
                         value={input}
@@ -257,7 +259,6 @@ const styles = StyleSheet.create({
     },
     header: {
         backgroundColor: '#667eea', // Solid color instead of gradient
-        paddingTop: 50,
         paddingBottom: 15,
         paddingHorizontal: 20,
     },
