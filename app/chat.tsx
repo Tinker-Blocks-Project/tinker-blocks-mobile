@@ -1,8 +1,8 @@
-import React, {useEffect, useRef, useState} from "react";
-import {Button, ScrollView, Text, TextInput, View, StyleSheet, Pressable, Animated, StatusBar} from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from "react-native";
+import Markdown from "react-native-markdown-display"; // ← Add this import
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import createSocket from "../utils/socket"; // This should be a function that returns a new WebSocket
-import Markdown from "react-native-markdown-display"; // ← Add this import
 
 export default function ChatScreen() {
     const [messages, setMessages] = useState<string[]>([]);
@@ -34,6 +34,7 @@ export default function ChatScreen() {
     const setupSocket = (ws: WebSocket) => {
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            console.log(data);
             setMessages((prev) => [...prev, `Pi: ${data.message}`]);
         };
 
@@ -104,14 +105,20 @@ export default function ChatScreen() {
 
     const sendCommand = async (command: string, message: string) => {
         const ws = await ensureSocketOpen();
-        ws.send(JSON.stringify({command}));
+        if(command === "run"){
+            ws.send(JSON.stringify({"command": "run", "params": {"workflow": "full", "use_hardware": true}}));
+        }
+        else if(command === "stop"){
+            ws.send(JSON.stringify({"command": "stop"}));
+        }
+        
         setMessages((prev) => [...prev, `You: ${message}`]);
     };
 
     const sendMessage = async () => {
         if (input.trim()) {
             const ws = await ensureSocketOpen();
-            ws.send(input);
+            ws.send(JSON.stringify({"command": "run", "params": {"workflow": "assistant", "message": input}}));
             setMessages((prev) => [...prev, `You: ${input}`]);
             setInput("");
 
@@ -129,7 +136,7 @@ export default function ChatScreen() {
         const isUser = msg.startsWith('You:');
         const isSystem = msg.startsWith('Pi:');
         const cleanMessage = isUser ? msg.substring(4) : (isSystem ? msg.substring(3) : msg);
-
+        console.log(cleanMessage);
         return (
             <View key={index} style={[
                 styles.messageContainer,
