@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Keyboard,
   Pressable,
   ScrollView,
   StatusBar,
@@ -17,11 +18,27 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [isConnected, setIsConnected] = useState(false);
+  const [HideKeyboard, setHideKeyboard] = useState(false);
   const socketRef = useRef<WebSocket>(createSocket());
   const scrollViewRef = useRef<ScrollView>(null);
   const connectionPulse = useRef(new Animated.Value(1)).current;
   const insets = useSafeAreaInsets();
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener("keyboardDidShow", () => {
+      console.log("🔼 Keyboard is open");
+      setHideKeyboard(true);
+    });
 
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      console.log("🔽 Keyboard is closed");
+      setHideKeyboard(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   useEffect(() => {
     const pulse = () => {
       Animated.sequence([
@@ -228,7 +245,12 @@ export default function ChatScreen() {
       <View
         style={[
           styles.inputArea,
-          { paddingBottom: Math.max(insets.bottom, 12) },
+          {
+            paddingBottom: Math.max(
+              insets.bottom,
+              HideKeyboard === false ? 12 : 328
+            ),
+          },
         ]}
       >
         <View style={styles.inputContainer}>
@@ -387,7 +409,6 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
   },
   inputArea: {
-    position: "sticky",
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",
